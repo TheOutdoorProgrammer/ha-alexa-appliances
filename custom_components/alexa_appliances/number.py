@@ -50,7 +50,7 @@ class AlexaApplianceRange(AlexaApplianceEntity, NumberEntity):
             {
                 "action": "setRangeValue",
                 "instance": self._instance,
-                "rangeValue": value,
+                "rangeValue": {"value": value},
             },
         )
         await self.coordinator.async_request_refresh()

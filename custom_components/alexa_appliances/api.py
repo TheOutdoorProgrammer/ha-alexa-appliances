@@ -146,7 +146,7 @@ class AlexaApplianceApi:
             "controlRequests": [
                 {
                     "entityId": entity_id,
-                    "entityType": "ENTITY",
+                    "entityType": "APPLIANCE",
                     "parameters": parameters,
                 }
             ]

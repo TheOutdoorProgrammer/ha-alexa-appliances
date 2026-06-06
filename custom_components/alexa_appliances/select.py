@@ -54,7 +54,7 @@ class AlexaApplianceMode(AlexaApplianceEntity, SelectEntity):
         value = self._label_to_value.get(option, option)
         await self.coordinator.api.set_state(
             self._alexa_entity_id,
-            {"action": "setMode", "instance": self._instance, "mode": value},
+            {"action": "setModeValue", "instance": self._instance, "mode": value},
         )
         await self.coordinator.async_request_refresh()
 
