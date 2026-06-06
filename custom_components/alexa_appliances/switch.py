@@ -42,22 +42,14 @@ class AlexaApplianceToggle(AlexaApplianceEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.coordinator.api.set_state(
             self._alexa_entity_id,
-            {
-                "action": "setToggleState",
-                "instance": self._instance,
-                "toggleState": "ON",
-            },
+            {"action": "turnOn", "instance": self._instance},
         )
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self.coordinator.api.set_state(
             self._alexa_entity_id,
-            {
-                "action": "setToggleState",
-                "instance": self._instance,
-                "toggleState": "OFF",
-            },
+            {"action": "turnOff", "instance": self._instance},
         )
         await self.coordinator.async_request_refresh()
 
