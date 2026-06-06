@@ -1,9 +1,6 @@
 """Constants for Alexa Appliances."""
 
-import logging
-
 DOMAIN = "alexa_appliances"
-_LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL_SECONDS = 60
 
@@ -33,6 +30,7 @@ query CustomerSmartHome {
 
 ALEXA_DEVICES_DOMAIN = "alexa_devices"
 
-ECHO_APPLIANCE_TYPES = {"ALEXA_VOICE_ENABLED", "ECHO", "TABLET"}
+ALEXA_HARDWARE_TYPES = {"ALEXA_VOICE_ENABLED", "ECHO", "TABLET", "FIRE_TV", "SMARTSPEAKER", "HUB"}
+ALEXA_HARDWARE_CAPABILITIES = {"Alexa.DoNotDisturbController"}
 
 USER_AGENT = "AmazonWebView/AmazonAlexa/2.2.663733.0/iOS/18.5/iPhone"

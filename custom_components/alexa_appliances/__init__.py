@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AlexaApplianceApi
-from .const import _LOGGER, ALEXA_DEVICES_DOMAIN
+from .const import ALEXA_DEVICES_DOMAIN
 from .coordinator import AlexaAppliancesConfigEntry, AlexaAppliancesCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR, Platform.SWITCH, Platform.SELECT, Platform.NUMBER]
 

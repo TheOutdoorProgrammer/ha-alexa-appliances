@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from typing import Any
 
@@ -10,7 +11,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AlexaApplianceApi
-from .const import _LOGGER, DOMAIN, SCAN_INTERVAL_SECONDS
+from .const import DOMAIN, SCAN_INTERVAL_SECONDS
+
+_LOGGER = logging.getLogger(__name__)
 
 type AlexaAppliancesConfigEntry = ConfigEntry[AlexaAppliancesCoordinator]
 
@@ -40,16 +43,13 @@ class AlexaAppliancesCoordinator(
         self.appliances = {a["entityId"]: a for a in appliances}
 
     async def _async_update_data(self) -> dict[str, list[dict[str, Any]]]:
-        """Poll state for all tracked appliances."""
-        result: dict[str, list[dict[str, Any]]] = {}
-        for entity_id in self.appliances:
-            try:
-                result[entity_id] = await self.api.get_state(entity_id)
-            except Exception as err:
-                raise UpdateFailed(
-                    f"Failed to get state for {entity_id}: {err}"
-                ) from err
-        return result
+        """Poll state for all tracked appliances in a single batch request."""
+        try:
+            return await self.api.get_states_batch(list(self.appliances.keys()))
+        except Exception as err:
+            raise UpdateFailed(
+                f"Failed to get appliance states: {err}"
+            ) from err
 
     def get_capability_value(
         self,

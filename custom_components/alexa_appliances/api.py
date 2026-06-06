@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from aiohttp import ClientSession
 
-from .const import _LOGGER, ECHO_APPLIANCE_TYPES, GQL_SMART_HOME_QUERY, USER_AGENT
+from .const import (
+    ALEXA_HARDWARE_CAPABILITIES,
+    ALEXA_HARDWARE_TYPES,
+    GQL_SMART_HOME_QUERY,
+    USER_AGENT,
+)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class AlexaApplianceApi:
@@ -44,7 +52,12 @@ class AlexaApplianceApi:
             if not legacy:
                 continue
             types = set(legacy.get("applianceTypes", []))
-            if types & ECHO_APPLIANCE_TYPES:
+            if types & ALEXA_HARDWARE_TYPES:
+                continue
+            cap_interfaces = {
+                c.get("interfaceName") for c in legacy.get("capabilities", [])
+            }
+            if cap_interfaces & ALEXA_HARDWARE_CAPABILITIES:
                 continue
             appliances.append(legacy)
 
@@ -53,9 +66,16 @@ class AlexaApplianceApi:
 
     async def get_state(self, entity_id: str) -> list[dict[str, Any]]:
         """Get the current state of an appliance."""
+        result = await self.get_states_batch([entity_id])
+        return result.get(entity_id, [])
+
+    async def get_states_batch(
+        self, entity_ids: list[str]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Get current state of multiple appliances in a single request."""
         payload = {
             "stateRequests": [
-                {"entityId": entity_id, "entityType": "ENTITY"},
+                {"entityId": eid, "entityType": "ENTITY"} for eid in entity_ids
             ]
         }
         async with self._session.post(
@@ -66,11 +86,16 @@ class AlexaApplianceApi:
             resp.raise_for_status()
             data = await resp.json(content_type=None)
 
-        states = []
+        result: dict[str, list[dict[str, Any]]] = {eid: [] for eid in entity_ids}
         for device_state in data.get("deviceStates", []):
+            eid = device_state.get("entity", {}).get("entityId")
+            if eid not in result:
+                continue
             for raw in device_state.get("capabilityStates", []):
-                states.append(json.loads(raw) if isinstance(raw, str) else raw)
-        return states
+                result[eid].append(
+                    json.loads(raw) if isinstance(raw, str) else raw
+                )
+        return result
 
     async def set_state(
         self, entity_id: str, parameters: dict[str, Any]

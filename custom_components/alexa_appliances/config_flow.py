@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -10,7 +11,9 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AlexaApplianceApi
-from .const import _LOGGER, ALEXA_DEVICES_DOMAIN, DOMAIN
+from .const import ALEXA_DEVICES_DOMAIN, DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class AlexaAppliancesConfigFlow(ConfigFlow, domain=DOMAIN):
