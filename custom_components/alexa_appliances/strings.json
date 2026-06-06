@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Alexa Appliances",
+        "description": "Found {appliance_count} smart home appliances via Alexa. Click submit to add them."
+      }
+    },
+    "abort": {
+      "alexa_devices_not_configured": "The official Alexa Devices integration must be configured first.",
+      "alexa_devices_no_cookies": "No session cookies found in Alexa Devices. Try re-authenticating.",
+      "already_configured": "Alexa Appliances is already configured."
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Alexa API.",
+      "no_appliances": "No smart home appliances found."
+    }
+  }
+}
