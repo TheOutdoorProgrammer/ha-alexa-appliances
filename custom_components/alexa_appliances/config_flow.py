@@ -7,19 +7,53 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AlexaApplianceApi
-from .const import ALEXA_DEVICES_DOMAIN, DOMAIN
+from .const import ALEXA_DEVICES_DOMAIN, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class AlexaAppliancesOptionsFlow(OptionsFlow):
+    """Options flow for Alexa Appliances."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        current = self.config_entry.options.get(
+            "scan_interval", DEFAULT_SCAN_INTERVAL
+        )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("scan_interval", default=current): vol.All(
+                        int, vol.Range(min=30, max=600)
+                    ),
+                }
+            ),
+        )
 
 
 class AlexaAppliancesConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow that discovers appliances using alexa_devices auth."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: Any,
+    ) -> AlexaAppliancesOptionsFlow:
+        return AlexaAppliancesOptionsFlow(config_entry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

@@ -6,7 +6,9 @@ import json
 import logging
 from typing import Any
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
+
+API_TIMEOUT = ClientTimeout(total=30)
 
 from .const import (
     ALEXA_HARDWARE_CAPABILITIES,
@@ -41,6 +43,7 @@ class AlexaApplianceApi:
             f"{self._base_url}/nexus/v1/graphql",
             json={"query": GQL_SMART_HOME_QUERY},
             headers=self._headers,
+            timeout=API_TIMEOUT,
         ) as resp:
             resp.raise_for_status()
             data = await resp.json(content_type=None)
@@ -82,6 +85,7 @@ class AlexaApplianceApi:
             f"{self._base_url}/api/phoenix/state",
             json=payload,
             headers=self._headers,
+            timeout=API_TIMEOUT,
         ) as resp:
             resp.raise_for_status()
             data = await resp.json(content_type=None)
@@ -114,6 +118,7 @@ class AlexaApplianceApi:
             f"{self._base_url}/api/phoenix/state",
             json=payload,
             headers=self._headers,
+            timeout=API_TIMEOUT,
         ) as resp:
             resp.raise_for_status()
             return await resp.json(content_type=None)

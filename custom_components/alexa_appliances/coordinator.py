@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AlexaApplianceApi
-from .const import DOMAIN, SCAN_INTERVAL_SECONDS
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,12 +32,13 @@ class AlexaAppliancesCoordinator(
         api: AlexaApplianceApi,
         appliances: list[dict[str, Any]],
     ) -> None:
+        scan_interval = entry.options.get("scan_interval", DEFAULT_SCAN_INTERVAL)
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             config_entry=entry,
-            update_interval=timedelta(seconds=SCAN_INTERVAL_SECONDS),
+            update_interval=timedelta(seconds=scan_interval),
         )
         self.api = api
         self.appliances = {a["entityId"]: a for a in appliances}

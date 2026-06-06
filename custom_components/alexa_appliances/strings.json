@@ -15,5 +15,17 @@
       "cannot_connect": "Failed to connect to Alexa API.",
       "no_appliances": "No smart home appliances found."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll Amazon for appliance state. Lower values give faster updates but may cause rate limiting. (30-600)"
+        }
+      }
+    }
   }
 }

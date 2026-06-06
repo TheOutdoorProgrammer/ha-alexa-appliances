@@ -2,7 +2,7 @@
 
 DOMAIN = "alexa_appliances"
 
-SCAN_INTERVAL_SECONDS = 60
+DEFAULT_SCAN_INTERVAL = 120
 
 GQL_SMART_HOME_QUERY = """
 query CustomerSmartHome {
