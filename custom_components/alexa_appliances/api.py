@@ -114,7 +114,7 @@ class AlexaApplianceApi:
                 }
             ]
         }
-        _LOGGER.debug("Control request: %s", payload)
+        _LOGGER.warning("Control request: %s", payload)
         async with self._session.put(
             f"{self._base_url}/api/phoenix/state",
             json=payload,
@@ -122,6 +122,6 @@ class AlexaApplianceApi:
             timeout=API_TIMEOUT,
         ) as resp:
             data = await resp.json(content_type=None)
-            _LOGGER.debug("Control response (%s): %s", resp.status, data)
+            _LOGGER.warning("Control response (%s): %s", resp.status, data)
             resp.raise_for_status()
             return data
