@@ -64,7 +64,16 @@ class AlexaApplianceApi:
                 continue
             appliances.append(legacy)
 
-        _LOGGER.debug("Discovered %d non-Echo appliances", len(appliances))
+        _LOGGER.warning("Discovered %d non-Echo appliances", len(appliances))
+        for a in appliances:
+            for cap in a.get("capabilities", []):
+                _LOGGER.warning(
+                    "  %s [%s] instance=%s props=%s",
+                    a.get("friendlyName"),
+                    cap.get("interfaceName"),
+                    cap.get("instance"),
+                    cap.get("properties"),
+                )
         return appliances
 
     async def get_state(self, entity_id: str) -> list[dict[str, Any]]:
