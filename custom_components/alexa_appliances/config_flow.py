@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
@@ -14,7 +14,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import AlexaApplianceApi
+from .api import AlexaApplianceApi, AlexaApplianceAuthError, build_session_cookies
 from .const import ALEXA_DEVICES_DOMAIN, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class AlexaAppliancesConfigFlow(ConfigFlow, domain=DOMAIN):
 
         alexa_entry = alexa_entries[0]
         login_data = alexa_entry.data.get("login_data", {})
-        cookies = login_data.get("website_cookies", {})
+        cookies = build_session_cookies(login_data)
 
         if not cookies:
             return self.async_abort(reason="alexa_devices_no_cookies")
@@ -102,5 +102,48 @@ class AlexaAppliancesConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema({}),
             description_placeholders={"appliance_count": str(len(appliances))},
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Re-read cookies from alexa_devices and verify Amazon accepts them."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            alexa_entries = self.hass.config_entries.async_entries(
+                ALEXA_DEVICES_DOMAIN
+            )
+            if not alexa_entries:
+                return self.async_abort(reason="alexa_devices_not_configured")
+
+            alexa_entry = alexa_entries[0]
+            cookies = build_session_cookies(alexa_entry.data.get("login_data", {}))
+            if not cookies:
+                return self.async_abort(reason="alexa_devices_no_cookies")
+
+            api = AlexaApplianceApi(async_get_clientsession(self.hass), cookies)
+            try:
+                await api.get_appliances()
+            except AlexaApplianceAuthError:
+                errors["base"] = "invalid_auth"
+            except Exception:
+                _LOGGER.exception("Failed to verify Alexa session")
+                errors["base"] = "cannot_connect"
+            else:
+                return self.async_update_reload_and_abort(
+                    self._get_reauth_entry(),
+                    data_updates={"alexa_entry_id": alexa_entry.entry_id},
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({}),
             errors=errors,
         )

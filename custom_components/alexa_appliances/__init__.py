@@ -6,9 +6,10 @@ import logging
 
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import AlexaApplianceApi
+from .api import AlexaApplianceApi, AlexaApplianceAuthError, build_session_cookies
 from .const import ALEXA_DEVICES_DOMAIN
 from .coordinator import AlexaAppliancesConfigEntry, AlexaAppliancesCoordinator
 
@@ -30,7 +31,7 @@ async def async_setup_entry(
         alexa_entry = alexa_entries[0]
 
     login_data = alexa_entry.data.get("login_data", {})
-    cookies = login_data.get("website_cookies", {})
+    cookies = build_session_cookies(login_data)
     if not cookies:
         _LOGGER.error("No cookies found in alexa_devices config entry")
         return False
@@ -38,7 +39,10 @@ async def async_setup_entry(
     session = async_get_clientsession(hass)
     api = AlexaApplianceApi(session, cookies)
 
-    appliances = await api.get_appliances()
+    try:
+        appliances = await api.get_appliances()
+    except AlexaApplianceAuthError as err:
+        raise ConfigEntryAuthFailed(str(err)) from err
     _LOGGER.info("Found %d Alexa appliances", len(appliances))
 
     coordinator = AlexaAppliancesCoordinator(hass, entry, api, appliances)

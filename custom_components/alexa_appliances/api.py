@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Any
 
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientError, ClientSession, ClientTimeout
 
 from .const import (
     ALEXA_HARDWARE_CAPABILITIES,
@@ -23,6 +23,19 @@ CSRF_URLS = [
     "/spa/index.html",
     "/api/devices-v2/device?cached=false",
 ]
+
+
+class AlexaApplianceAuthError(Exception):
+    """Amazon no longer accepts the session cookies borrowed from alexa_devices."""
+
+
+def build_session_cookies(login_data: dict[str, Any]) -> dict[str, str]:
+    """Build the alexa.amazon.com cookie jar; website_cookies omits session-token."""
+    cookies = dict(login_data.get("website_cookies") or {})
+    store_cookie = (login_data.get("store_authentication_cookie") or {}).get("cookie")
+    if store_cookie:
+        cookies["session-token"] = store_cookie
+    return cookies
 
 
 class AlexaApplianceApi:
@@ -49,10 +62,14 @@ class AlexaApplianceApi:
         return headers
 
     async def _ensure_csrf(self) -> None:
-        """Fetch CSRF token if we don't have one."""
+        """Fetch a CSRF token, raising if Amazon no longer accepts our session.
+
+        Redirects stay unfollowed so an expired session surfaces as a 302.
+        """
         if self._csrf:
             return
         cookie_str = "; ".join(f"{k}={v}" for k, v in self._cookies.items())
+        attempts: list[str] = []
         for url in CSRF_URLS:
             try:
                 async with self._session.get(
@@ -62,15 +79,21 @@ class AlexaApplianceApi:
                         "User-Agent": USER_AGENT,
                     },
                     timeout=API_TIMEOUT,
+                    allow_redirects=False,
                 ) as resp:
                     for cookie in resp.cookies.values():
                         if cookie.key == "csrf":
                             self._csrf = cookie.value
                             _LOGGER.debug("CSRF token acquired from %s", url)
                             return
-            except Exception:
-                continue
-        _LOGGER.warning("Could not acquire CSRF token")
+                    attempts.append(f"{url} -> HTTP {resp.status}, no csrf cookie")
+            except (ClientError, TimeoutError) as err:
+                attempts.append(f"{url} -> {err!r}")
+        raise AlexaApplianceAuthError(
+            "Amazon rejected the session cookies copied from the alexa_devices "
+            "integration. Re-authenticate Amazon Devices so it stores fresh "
+            f"website_cookies. Tried: {'; '.join(attempts)}"
+        )
 
     async def get_appliances(self) -> list[dict[str, Any]]:
         """Discover all smart home appliances (excluding Echo devices)."""
@@ -112,6 +135,7 @@ class AlexaApplianceApi:
         self, entity_ids: list[str]
     ) -> dict[str, list[dict[str, Any]]]:
         """Get current state of multiple appliances in a single request."""
+        await self._ensure_csrf()
         payload = {
             "stateRequests": [
                 {"entityId": eid, "entityType": "ENTITY"} for eid in entity_ids

@@ -8,9 +8,10 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AlexaApplianceApi
+from .api import AlexaApplianceApi, AlexaApplianceAuthError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,9 +48,11 @@ class AlexaAppliancesCoordinator(
         """Poll state for all tracked appliances in a single batch request."""
         try:
             return await self.api.get_states_batch(list(self.appliances.keys()))
+        except AlexaApplianceAuthError as err:
+            raise ConfigEntryAuthFailed(str(err)) from err
         except Exception as err:
             raise UpdateFailed(
-                f"Failed to get appliance states: {err}"
+                f"Failed to get appliance states: {err!r}"
             ) from err
 
     def get_capability_value(
