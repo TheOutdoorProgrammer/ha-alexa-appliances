@@ -74,6 +74,7 @@ class AlexaApplianceApi:
             return
         cookie_str = "; ".join(f"{k}={v}" for k, v in self._cookies.items())
         attempts: list[str] = []
+        statuses: list[int] = []
         for url in CSRF_URLS:
             try:
                 async with self._session.get(
@@ -90,9 +91,16 @@ class AlexaApplianceApi:
                             self._csrf = cookie.value
                             _LOGGER.debug("CSRF token acquired from %s", url)
                             return
+                    statuses.append(resp.status)
                     attempts.append(f"{url} -> HTTP {resp.status}, no csrf cookie")
             except (ClientError, TimeoutError) as err:
                 attempts.append(f"{url} -> {err!r}")
+        if statuses and all(status == 200 for status in statuses):
+            _LOGGER.debug(
+                "No csrf cookie issued but the session is accepted; reads do not "
+                "need one, so continuing without it"
+            )
+            return
         raise AlexaApplianceAuthError(
             "No CSRF token: it was absent from the stored cookie jar and none of "
             "the bootstrap URLs issued one. A 200 here means the session IS "
@@ -172,6 +180,11 @@ class AlexaApplianceApi:
     ) -> dict[str, Any]:
         """Send a control command to an appliance."""
         await self._ensure_csrf()
+        if not self._csrf:
+            raise AlexaApplianceAuthError(
+                "Control requires a CSRF token and Amazon did not issue one; "
+                "state reads still work without it"
+            )
         payload = {
             "controlRequests": [
                 {
