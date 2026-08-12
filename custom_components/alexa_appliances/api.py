@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -18,6 +19,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 API_TIMEOUT = ClientTimeout(total=30)
+STATE_BATCH_SIZE = 20
 CSRF_URLS = [
     "/api/language",
     "/spa/index.html",
@@ -148,8 +150,23 @@ class AlexaApplianceApi:
     async def get_states_batch(
         self, entity_ids: list[str]
     ) -> dict[str, list[dict[str, Any]]]:
-        """Get current state of multiple appliances in a single request."""
+        """Get appliance state in concurrent chunks; 76 in one request neared the 30s timeout."""
         await self._ensure_csrf()
+        chunks = [
+            entity_ids[i : i + STATE_BATCH_SIZE]
+            for i in range(0, len(entity_ids), STATE_BATCH_SIZE)
+        ]
+        merged: dict[str, list[dict[str, Any]]] = {eid: [] for eid in entity_ids}
+        for chunk_result in await asyncio.gather(
+            *(self._fetch_state_chunk(chunk) for chunk in chunks)
+        ):
+            merged.update(chunk_result)
+        return merged
+
+    async def _fetch_state_chunk(
+        self, entity_ids: list[str]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Fetch appliance state for one chunk of entity ids."""
         payload = {
             "stateRequests": [
                 {"entityId": eid, "entityType": "ENTITY"} for eid in entity_ids
