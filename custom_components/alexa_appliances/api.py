@@ -50,7 +50,7 @@ class AlexaApplianceApi:
     @property
     def _headers(self) -> dict[str, str]:
         cookie_str = "; ".join(f"{k}={v}" for k, v in self._cookies.items())
-        if self._csrf:
+        if self._csrf and "csrf" not in self._cookies:
             cookie_str += f"; csrf={self._csrf}"
         headers = {
             "Content-Type": "application/json",
@@ -67,6 +67,10 @@ class AlexaApplianceApi:
         Redirects stay unfollowed so an expired session surfaces as a 302.
         """
         if self._csrf:
+            return
+        if jar_csrf := self._cookies.get("csrf"):
+            self._csrf = jar_csrf
+            _LOGGER.debug("CSRF token taken from the stored cookie jar")
             return
         cookie_str = "; ".join(f"{k}={v}" for k, v in self._cookies.items())
         attempts: list[str] = []
@@ -90,9 +94,11 @@ class AlexaApplianceApi:
             except (ClientError, TimeoutError) as err:
                 attempts.append(f"{url} -> {err!r}")
         raise AlexaApplianceAuthError(
-            "Amazon rejected the session cookies copied from the alexa_devices "
-            "integration. Re-authenticate Amazon Devices so it stores fresh "
-            f"website_cookies. Tried: {'; '.join(attempts)}"
+            "No CSRF token: it was absent from the stored cookie jar and none of "
+            "the bootstrap URLs issued one. A 200 here means the session IS "
+            "accepted and Amazon simply moved the token; a 302 or 401 means the "
+            f"session is dead. Tried: {'; '.join(attempts)}. "
+            f"Cookie names held: {sorted(self._cookies)}"
         )
 
     async def get_appliances(self) -> list[dict[str, Any]]:
